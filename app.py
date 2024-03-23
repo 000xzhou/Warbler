@@ -7,7 +7,7 @@ from flask_debugtoolbar import DebugToolbarExtension
 from sqlalchemy.exc import IntegrityError
 
 from forms import UserAddForm, LoginForm, MessageForm, ProfileEditForm
-from models import db, connect_db, User, Message
+from models import db, connect_db, User, Message, Likes
 
 CURR_USER_KEY = "curr_user"
 
@@ -344,5 +344,44 @@ def add_header(req):
     req.headers['Cache-Control'] = 'public, max-age=0'
     return req
 
+
+@app.route('/users/<int:user_id>/likes')
+def user_likes(user_id):
+    """Show list of likes of this user."""
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
+    
+    user = User.query.get_or_404(user_id)
+    return render_template('users/likes.html', user=user)
+    
+@app.route('/users/add_like/<int:likes_id>', methods=["POST"])
+def add_likes(likes_id):
+    """Add a follow for the currently-logged-in user."""
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
+
+    like_post = Message.query.get_or_404(likes_id)
+    g.user.likes.append(like_post)
+    db.session.commit()
+
+    return redirect("/")
+
+@app.route('/users/stop_liking/<int:likes_id>', methods=['POST'])
+def stop_liking(likes_id):
+    """Have currently-logged-in-user stop following this user."""
+
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
+
+    liked_post = Message.query.get(likes_id)
+    g.user.likes.remove(liked_post)
+    db.session.commit()
+
+    return redirect("/")
+
 if __name__ == "__main__":
     app.run(debug=True)
+    
